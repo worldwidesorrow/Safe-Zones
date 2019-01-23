@@ -6,13 +6,14 @@
 	https://github.com/BigEgg17
 */
 
-private ["_bubbles", "_speedLimit", "_preventTheft", "_timer", "_disableWeps", "_badWeps"];
+private ["_bubbles", "_speedLimit", "_preventTheft", "_timer", "_disableWeps", "_badWeps","_zombieDist"];
 
 /**************************************************** Config ****************************************************/
 _bubbles = true; // Creates a circle of bubbles marking the circumference of the safe zone.
 _speedLimit = 30; // Speed limit in safe zones. Set to 0 to disable speed limit.
 _preventTheft = true; // Prevent vehicles from being stolen by assigning them an owner (this includes gear).
 _timer = 10; // Delay ending safe zone protection for this many seconds upon leaving. Set to 0 to disable timer.
+_zombieDist = 100; // Distance from players that zombies get deleted while in safezone.
 
 _disableWeps = true; // Drops any weapons in _badWeps array.
 _badWeps = [ // Will remove these weapons from the player if they try to select them. Only used if _disableWeps = true.
@@ -139,11 +140,6 @@ if (!isDedicated) then {
 		};
 		fnc_usec_damageHandler = {0}; // God mode
 
-		if (isNil "player_zombieCheck1") then {
-			player_zombieCheck1 = player_zombieCheck;
-		};
-		player_zombieCheck = {false}; // No zombie aggro
-
 		if (isNil "player_fired1") then {
 			player_fired1 = player_fired;
 		};
@@ -152,10 +148,10 @@ if (!isDedicated) then {
 			cutText [localize "STR_CL_SZ_FIRE", "WHITE IN"];
 		};
 
-		[_speedLimit, _disableWeps, _badWeps, _preventTheft] spawn {
+		[_speedLimit, _disableWeps, _badWeps, _preventTheft,_zombieDist] spawn {
 			while {safezone_enabled} do
 			{
-				private "_vehicle";
+				private ["_vehicle","_zombies"];
 
 				_vehicle = vehicle player;
 
@@ -218,6 +214,15 @@ if (!isDedicated) then {
 						_vehicle addEventHandler ["Fired", {_this call player_fired}];
 					};
 				};
+				
+				// Deletes zombies near players
+				_zombies = (vehicle player) nearEntities ["zZombie_Base",(_this select 4)];
+				
+				if((count _zombies) > 0) then {
+					{
+						deleteVehicle _x;
+					} forEach _zombies;	
+				};
 
 				// Prevent player from being unconscious in safe zone
 				{
@@ -269,7 +274,6 @@ if (!isDedicated) then {
 		localize "STR_CL_SZ_DISABLED" call dayz_rollingMessages;
 
 		fnc_usec_damageHandler = fnc_usec_damageHandler1;
-		player_zombieCheck = player_zombieCheck1;
 		player_fired = player_fired1;
 		if (_preventTheft) then {
 			fn_gearMenuChecks = fn_gearMenuChecks1;
